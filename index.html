@@ -96,9 +96,8 @@ padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-are
 .lb[hidden]{display:none}
 .lb img{max-width:100%;max-height:100%;object-fit:contain}
 .nav .grp{display:flex;gap:8px;align-items:center}
-.filters{display:flex;gap:8px;flex-wrap:wrap}
-.chip{border-radius:999px;padding:6px 12px;font-size:13px;background:var(--card)}
-.chip[aria-pressed="true"]{background:var(--ac);color:var(--card);border-color:var(--ac)}
+.jumpRow{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:13px;color:var(--sub)}
+.jumpRow select{flex:1;font:inherit;font-size:14px;font-weight:700;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--tx)}
 #selCard{scroll-margin-top:14px}
 @media (prefers-reduced-motion:no-preference){.bar{transition:filter .15s}.bar:hover{filter:brightness(.96)}.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}}
 </style>
@@ -107,7 +106,6 @@ padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-are
 <h1>イベントカレンダー</h1>
 <div class="legend"><span class="mk"></span><span>赤いマークは実装済みのイベントです</span></div>
 <div class="legend l2"><span id="lgPic"></span><span>画像マークは、詳細に画像があるイベントです</span></div>
-<div class="filters"><button type="button" class="chip" id="fDone" aria-pressed="false">実装済みのみ</button><button type="button" class="chip" id="fLive" aria-pressed="false">開催中のみ</button></div>
 
 <div class="card" id="selCard">
 <div class="hd"><strong id="selTitle"></strong><small id="selSub"></small></div>
@@ -116,6 +114,7 @@ padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-are
 
 <div class="card">
 <div class="nav"><button id="prev" aria-label="前の月">◀</button><strong id="title"></strong><span class="grp"><button id="todayBtn" type="button">今日</button><button id="next" aria-label="次の月">▶</button></span></div>
+<div class="jumpRow"><label for="jump">月ジャンプ</label><select id="jump" aria-label="表示する月を選ぶ"></select></div>
 <div class="dows" id="dows"></div>
 <div id="cal"></div>
 <div class="note" style="margin-top:8px">日付をタップすると、その日のイベントが上に表示されます。</div>
@@ -252,21 +251,20 @@ function item(ev,extra){
   return li;
 }
 function onDay(k){return EV.filter(function(e){return D(e.s)<=D(k)&&D(k)<=D(e.e)})}
-var onlyDone=false,onlyLive=false;
-function fmatch(ev){if(onlyDone&&!ev.done)return false;if(onlyLive){var t=D(today);if(t<D(ev.s)||t>D(ev.e))return false}return true}
 function renderSel(){
   var list=$("selList");list.innerHTML="";
-  var evs=onDay(sel).filter(fmatch);
+  var evs=onDay(sel);
   $("selTitle").textContent=(sel===today?"今日 ":"")+md(sel)+"("+wd(sel)+")のイベント";
   $("selSub").textContent=evs.length?evs.length+"件":"";
   if(evs.length){evs.forEach(function(e){list.appendChild(item(e))});return}
-  var nx=EV.filter(function(e){return D(e.s)>D(sel)}).filter(fmatch).sort(function(a,b){return D(a.s)-D(b.s)})[0];
+  var nx=EV.filter(function(e){return D(e.s)>D(sel)}).sort(function(a,b){return D(a.s)-D(b.s)})[0];
   list.appendChild(el("div","empty","この日に開催中のイベントはありません。"));
   if(nx){list.appendChild(item(nx))}
 }
 function renderMonth(){
   var y=+ym.slice(0,4),m=+ym.slice(5);
   $("title").textContent=y+"年"+m+"月";
+  $("jump").value=ym;
   $("prev").disabled=ym<=MIN;$("next").disabled=ym>=MAX;
   var first=Date.UTC(y,m-1,1),last=Date.UTC(y,m,0);
   var start=first-new Date(first).getUTCDay()*864e5;
@@ -287,7 +285,6 @@ function renderMonth(){
     var segs=[];
     EV.forEach(function(ev){
       var s=D(ev.s),e=D(ev.e);
-      if(!fmatch(ev))return;
       if(e<ws||s>we)return;
       var cs=Math.max(s,ws),ce=Math.min(e,we);
       segs.push({ev:ev,a:Math.round((cs-ws)/864e5),b:Math.round((ce-ws)/864e5),cl:s<ws,cr:e>we});
@@ -312,7 +309,7 @@ function renderMonth(){
     wk.appendChild(bars);cal.appendChild(wk);
   }
   var ms=iso(first),me=iso(last);
-  var evs=EV.filter(function(e){return e.s<=me&&e.e>=ms}).filter(fmatch).sort(function(a,b){return D(a.s)-D(b.s)||D(a.e)-D(b.e)});
+  var evs=EV.filter(function(e){return e.s<=me&&e.e>=ms}).sort(function(a,b){return D(a.s)-D(b.s)||D(a.e)-D(b.e)});
   $("mTitle").textContent=m+"月のイベント";
   $("mCount").textContent=evs.length+"件・実装済み "+evs.filter(function(e){return e.done}).length+"件";
   var ml=$("mList");ml.innerHTML="";
@@ -326,9 +323,10 @@ $("dClose").onclick=closeDetail;
 $("lb").onclick=function(){$("lb").hidden=true};
 $("ov").onclick=function(e){if(e.target===$("ov"))closeDetail()};
 document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!$("ov").hidden)closeDetail()});
+var jEl=$("jump");
+(function(){var yy=+MIN.slice(0,4),mm=+MIN.slice(5);for(;;){var v=yy+"-"+String(mm).padStart(2,"0");var o=el("option","",yy+"年"+mm+"月");o.value=v;jEl.appendChild(o);if(v===MAX)break;mm++;if(mm>12){mm=1;yy++}}})();
+jEl.onchange=function(){ym=jEl.value;renderMonth()};
 $("todayBtn").onclick=function(){ym=today.slice(0,7);if(ym<MIN)ym=MIN;if(ym>MAX)ym=MAX;sel=today;renderSel();renderMonth()};
-$("fDone").onclick=function(){onlyDone=!onlyDone;this.setAttribute("aria-pressed",String(onlyDone));renderSel();renderMonth()};
-$("fLive").onclick=function(){onlyLive=!onlyLive;this.setAttribute("aria-pressed",String(onlyLive));renderSel();renderMonth()};
 $("lgPic").appendChild(pic());
 renderSel();renderMonth();
 </script>
