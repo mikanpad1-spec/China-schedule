@@ -98,6 +98,9 @@ padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-are
 .nav .grp{display:flex;gap:8px;align-items:center}
 .jumpRow{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:13px;color:var(--sub)}
 .jumpRow select{flex:1;font:inherit;font-size:14px;font-weight:700;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--tx)}
+.searchRow{display:flex;gap:8px;align-items:center}
+#q{flex:1;font:inherit;font-size:14px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--tx);min-width:0}
+#q:focus{border-color:var(--ac)}
 #selCard{scroll-margin-top:14px}
 @media (prefers-reduced-motion:no-preference){.bar{transition:filter .15s}.bar:hover{filter:brightness(.96)}.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}}
 </style>
@@ -106,6 +109,12 @@ padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-are
 <h1>イベントカレンダー</h1>
 <div class="legend"><span class="mk"></span><span>赤いマークは実装済みのイベントです</span></div>
 <div class="legend l2"><span id="lgPic"></span><span>画像マークは、詳細に画像があるイベントです</span></div>
+
+<div class="card" id="searchCard">
+<div class="hd"><strong>イベント検索</strong><small id="qCount"></small></div>
+<div class="searchRow"><input type="search" id="q" placeholder="イベント名で検索（例：西遊記）" aria-label="イベント名で検索"></div>
+<div class="list" id="qList" style="margin-top:6px"></div>
+</div>
 
 <div class="card" id="selCard">
 <div class="hd"><strong id="selTitle"></strong><small id="selSub"></small></div>
@@ -328,6 +337,16 @@ var jEl=$("jump");
 jEl.onchange=function(){ym=jEl.value;renderMonth()};
 $("todayBtn").onclick=function(){ym=today.slice(0,7);if(ym<MIN)ym=MIN;if(ym>MAX)ym=MAX;sel=today;renderSel();renderMonth()};
 $("lgPic").appendChild(pic());
+function renderSearch(){
+  var raw=$("q").value||"",q=raw.trim().toLowerCase(),list=$("qList");list.innerHTML="";
+  if(!q){$("qCount").textContent="";list.appendChild(el("div","empty","名前の一部を入力すると、期間を問わず一致するイベントが出ます。"));return}
+  var hits=EV.filter(function(e){return e.n.toLowerCase().indexOf(q)>=0}).sort(function(a,b){return D(a.s)-D(b.s)});
+  $("qCount").textContent=hits.length+"件";
+  if(!hits.length){list.appendChild(el("div","empty","「"+raw.trim()+"」に一致するイベントはありません。"));return}
+  hits.forEach(function(e){list.appendChild(item(e))});
+}
+$("q").addEventListener("input",renderSearch);
+renderSearch();
 renderSel();renderMonth();
 </script>
 </body></html>
