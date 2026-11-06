@@ -115,7 +115,7 @@ padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-are
 <div class="card" id="searchCard">
 <div class="hd"><strong>イベント検索</strong><small id="qCount"></small></div>
 <div class="searchRow"><input type="search" id="q" placeholder="イベント名で検索（例：西遊記）" aria-label="イベント名で検索"></div>
-<div class="fmtRow"><label for="fmt">形式</label><select id="fmt" aria-label="イベント形式で絞り込む"><option value="all">すべての形式</option><option value="実装">実装</option><option value="カラー">カラー</option><option value="復刻">復刻</option><option value="その他">その他</option></select></div>
+<div class="fmtRow"><label for="fmt">形式</label><select id="fmt" aria-label="イベント形式で絞り込む"><option value="all">すべての形式</option></select></div>
 <div class="list" id="qList" style="margin-top:6px"></div>
 </div>
 
@@ -159,6 +159,7 @@ padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-are
 <script src="imgdata4.js"></script>
 <script src="imgdata5.js"></script>
 <script>
+var FMT=["化身イベ","狩人","コラボ","滑り台","コラボ","幸運ガチャ","遺跡","ドライべ","花イベ","コラボ","滑り台","狩人","特殊","特殊","滑り台","コラボ","ドライべ","遺跡","滑り台","コラボ","花イベ","狩人","特殊","滑り台","特殊"];
 var EV=[
 ["2026-05-02","2026-05-09","キキララ",0],
 ["2026-05-10","2026-05-18","ミカエル実装",1],
@@ -185,7 +186,7 @@ var EV=[
 ["2026-10-23","2026-10-25","溶鉱炉",0],
 ["2026-10-26","2026-11-01","Joker滑り台",0],
 ["2026-11-01","2026-11-08","ハロウィン",1]
-].map(function(e,i){return{id:i,s:e[0],e:e[1],n:e[2],done:!!e[3],c:i%4}});
+].map(function(e,i){return{id:i,s:e[0],e:e[1],n:e[2],done:!!e[3],c:i%4,f:FMT[i]}});
 /* イベント番号(上の並び順で0から)ごとの詳細画像。画像は img/ に置いて相対パスで指定する */
 var IMG=window.IMG||{};
 var W="日月火水木金土".split("");
@@ -248,7 +249,7 @@ function status(ev){
   return{k:"on",t:"開催中"};
 }
 var fmt="all";
-function catOf(ev){if(ev.n.indexOf("実装")>=0)return"実装";if(ev.n.indexOf("カラー")>=0)return"カラー";if(ev.n.indexOf("復刻")>=0)return"復刻";return"その他"}
+function catOf(ev){return ev.f||"その他"}
 function matchFmt(ev){return fmt==="all"||catOf(ev)===fmt}
 function ni0(ev){return(IMG[ev.id]||[]).length}
 function item(ev,extra){
@@ -354,6 +355,7 @@ function renderSearch(){
   hits.forEach(function(e){list.appendChild(item(e))});
 }
 $("q").addEventListener("input",renderSearch);
+(function(){var seen={};EV.forEach(function(ev){var f=catOf(ev);if(seen[f])return;seen[f]=1;var o=el("option","",f);o.value=f;$("fmt").appendChild(o)})})();
 $("fmt").addEventListener("change",function(){fmt=this.value;renderSearch();renderSel();renderMonth()});
 renderSearch();
 renderSel();renderMonth();
