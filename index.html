@@ -101,6 +101,8 @@ padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-are
 .searchRow{display:flex;gap:8px;align-items:center}
 #q{flex:1;font:inherit;font-size:14px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--tx);min-width:0}
 #q:focus{border-color:var(--ac)}
+.fmtRow{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;color:var(--sub)}
+.fmtRow select{flex:1;font:inherit;font-size:14px;font-weight:700;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--tx)}
 #selCard{scroll-margin-top:14px}
 @media (prefers-reduced-motion:no-preference){.bar{transition:filter .15s}.bar:hover{filter:brightness(.96)}.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}}
 </style>
@@ -113,6 +115,7 @@ padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-are
 <div class="card" id="searchCard">
 <div class="hd"><strong>イベント検索</strong><small id="qCount"></small></div>
 <div class="searchRow"><input type="search" id="q" placeholder="イベント名で検索（例：西遊記）" aria-label="イベント名で検索"></div>
+<div class="fmtRow"><label for="fmt">形式</label><select id="fmt" aria-label="イベント形式で絞り込む"><option value="all">すべての形式</option><option value="実装">実装</option><option value="カラー">カラー</option><option value="復刻">復刻</option><option value="その他">その他</option></select></div>
 <div class="list" id="qList" style="margin-top:6px"></div>
 </div>
 
@@ -206,6 +209,7 @@ function openDetail(ev){
   var meta=$("dMeta");meta.innerHTML="";
   var st=status(ev),days=Math.round((D(ev.e)-D(ev.s))/864e5)+1;
   meta.appendChild(el("span","pill "+st.k,st.t));
+  meta.appendChild(el("span","pill",catOf(ev)));
   if(ev.done)meta.appendChild(el("span","tag","実装済み"));
   meta.appendChild(el("span","",md(ev.s)+"("+wd(ev.s)+") 〜 "+md(ev.e)+"("+wd(ev.e)+")・"+days+"日間"));
   var box=$("dImgs");box.innerHTML="";
@@ -243,6 +247,9 @@ function status(ev){
   if(t>D(ev.e))return{k:"end",t:"終了"};
   return{k:"on",t:"開催中"};
 }
+var fmt="all";
+function catOf(ev){if(ev.n.indexOf("実装")>=0)return"実装";if(ev.n.indexOf("カラー")>=0)return"カラー";if(ev.n.indexOf("復刻")>=0)return"復刻";return"その他"}
+function matchFmt(ev){return fmt==="all"||catOf(ev)===fmt}
 function ni0(ev){return(IMG[ev.id]||[]).length}
 function item(ev,extra){
   var li=el("div","item"+(extra||""));
@@ -254,19 +261,19 @@ function item(ev,extra){
   var st=status(ev);li.appendChild(el("span","pill "+st.k,st.t));
   var days=Math.round((D(ev.e)-D(ev.s))/864e5)+1;
   var ni=(IMG[ev.id]||[]).length;
-  li.appendChild(el("div","dt",md(ev.s)+"("+wd(ev.s)+") 〜 "+md(ev.e)+"("+wd(ev.e)+")・"+days+"日間"+(ni?"・画像"+ni+"枚":"")));
+  li.appendChild(el("div","dt",md(ev.s)+"("+wd(ev.s)+") 〜 "+md(ev.e)+"("+wd(ev.e)+")・"+days+"日間"+(ni?"・画像"+ni+"枚":"")+"・"+catOf(ev)));
   if(ev.done)li.appendChild(el("span","tag","実装済み"));
   press(li,function(){openDetail(ev)});
   return li;
 }
-function onDay(k){return EV.filter(function(e){return D(e.s)<=D(k)&&D(k)<=D(e.e)})}
+function onDay(k){return EV.filter(function(e){return matchFmt(e)&&D(e.s)<=D(k)&&D(k)<=D(e.e)})}
 function renderSel(){
   var list=$("selList");list.innerHTML="";
   var evs=onDay(sel);
   $("selTitle").textContent=(sel===today?"今日 ":"")+md(sel)+"("+wd(sel)+")のイベント";
   $("selSub").textContent=evs.length?evs.length+"件":"";
   if(evs.length){evs.forEach(function(e){list.appendChild(item(e))});return}
-  var nx=EV.filter(function(e){return D(e.s)>D(sel)}).sort(function(a,b){return D(a.s)-D(b.s)})[0];
+  var nx=EV.filter(function(e){return matchFmt(e)&&D(e.s)>D(sel)}).sort(function(a,b){return D(a.s)-D(b.s)})[0];
   list.appendChild(el("div","empty","この日に開催中のイベントはありません。"));
   if(nx){list.appendChild(item(nx))}
 }
@@ -293,6 +300,7 @@ function renderMonth(){
     wk.appendChild(days);
     var segs=[];
     EV.forEach(function(ev){
+      if(!matchFmt(ev))return;
       var s=D(ev.s),e=D(ev.e);
       if(e<ws||s>we)return;
       var cs=Math.max(s,ws),ce=Math.min(e,we);
@@ -318,7 +326,7 @@ function renderMonth(){
     wk.appendChild(bars);cal.appendChild(wk);
   }
   var ms=iso(first),me=iso(last);
-  var evs=EV.filter(function(e){return e.s<=me&&e.e>=ms}).sort(function(a,b){return D(a.s)-D(b.s)||D(a.e)-D(b.e)});
+  var evs=EV.filter(function(e){return matchFmt(e)&&e.s<=me&&e.e>=ms}).sort(function(a,b){return D(a.s)-D(b.s)||D(a.e)-D(b.e)});
   $("mTitle").textContent=m+"月のイベント";
   $("mCount").textContent=evs.length+"件・実装済み "+evs.filter(function(e){return e.done}).length+"件";
   var ml=$("mList");ml.innerHTML="";
@@ -339,13 +347,14 @@ $("todayBtn").onclick=function(){ym=today.slice(0,7);if(ym<MIN)ym=MIN;if(ym>MAX)
 $("lgPic").appendChild(pic());
 function renderSearch(){
   var raw=$("q").value||"",q=raw.trim().toLowerCase(),list=$("qList");list.innerHTML="";
-  if(!q){$("qCount").textContent="";list.appendChild(el("div","empty","名前の一部を入力すると、期間を問わず一致するイベントが出ます。"));return}
-  var hits=EV.filter(function(e){return e.n.toLowerCase().indexOf(q)>=0}).sort(function(a,b){return D(a.s)-D(b.s)});
+  if(!q&&fmt==="all"){$("qCount").textContent="";list.appendChild(el("div","empty","名前の一部を入力するか、形式を選ぶと、期間を問わず一致するイベントが出ます。"));return}
+  var hits=EV.filter(function(e){return matchFmt(e)&&(!q||e.n.toLowerCase().indexOf(q)>=0)}).sort(function(a,b){return D(a.s)-D(b.s)});
   $("qCount").textContent=hits.length+"件";
-  if(!hits.length){list.appendChild(el("div","empty","「"+raw.trim()+"」に一致するイベントはありません。"));return}
+  if(!hits.length){list.appendChild(el("div","empty",q?"「"+raw.trim()+"」に一致するイベントはありません。":"その形式のイベントはありません。"));return}
   hits.forEach(function(e){list.appendChild(item(e))});
 }
 $("q").addEventListener("input",renderSearch);
+$("fmt").addEventListener("change",function(){fmt=this.value;renderSearch();renderSel();renderMonth()});
 renderSearch();
 renderSel();renderMonth();
 </script>
