@@ -98,10 +98,7 @@ padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-are
 .nav .grp{display:flex;gap:8px;align-items:center}
 .jumpRow{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:13px;color:var(--sub)}
 .jumpRow select{flex:1;font:inherit;font-size:14px;font-weight:700;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--tx)}
-.searchRow{display:flex;gap:8px;align-items:center}
-#q{flex:1;font:inherit;font-size:14px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--tx);min-width:0}
-#q:focus{border-color:var(--ac)}
-.fmtRow{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;color:var(--sub)}
+.fmtRow{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub)}
 .fmtRow select{flex:1;font:inherit;font-size:14px;font-weight:700;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--tx)}
 #selCard{scroll-margin-top:14px}
 @media (prefers-reduced-motion:no-preference){.bar{transition:filter .15s}.bar:hover{filter:brightness(.96)}.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}}
@@ -113,9 +110,8 @@ padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-are
 <div class="legend l2"><span id="lgPic"></span><span>画像マークは、詳細に画像があるイベントです</span></div>
 
 <div class="card" id="searchCard">
-<div class="hd"><strong>イベント検索</strong><small id="qCount"></small></div>
-<div class="searchRow"><input type="search" id="q" placeholder="イベント名で検索（例：西遊記）" aria-label="イベント名で検索"></div>
-<div class="fmtRow"><label for="fmt">形式</label><select id="fmt" aria-label="イベント形式で絞り込む"><option value="all">すべての形式</option></select></div>
+<div class="hd"><strong>イベント形式</strong><small id="qCount"></small></div>
+<div class="fmtRow"><select id="fmt" aria-label="イベント形式で絞り込む"><option value="all">すべての形式</option></select></div>
 <div class="list" id="qList" style="margin-top:6px"></div>
 </div>
 
@@ -347,14 +343,13 @@ jEl.onchange=function(){ym=jEl.value;renderMonth()};
 $("todayBtn").onclick=function(){ym=today.slice(0,7);if(ym<MIN)ym=MIN;if(ym>MAX)ym=MAX;sel=today;renderSel();renderMonth()};
 $("lgPic").appendChild(pic());
 function renderSearch(){
-  var raw=$("q").value||"",q=raw.trim().toLowerCase(),list=$("qList");list.innerHTML="";
-  if(!q&&fmt==="all"){$("qCount").textContent="";list.appendChild(el("div","empty","名前の一部を入力するか、形式を選ぶと、期間を問わず一致するイベントが出ます。"));return}
-  var hits=EV.filter(function(e){return matchFmt(e)&&(!q||e.n.toLowerCase().indexOf(q)>=0)}).sort(function(a,b){return D(a.s)-D(b.s)});
+  var list=$("qList");list.innerHTML="";
+  if(fmt==="all"){$("qCount").textContent="";list.appendChild(el("div","empty","形式を選ぶと、期間を問わずその形式のイベントがここに出ます。カレンダーや月のイベントも連動して絞られます。"));return}
+  var hits=EV.filter(function(e){return matchFmt(e)}).sort(function(a,b){return D(a.s)-D(b.s)});
   $("qCount").textContent=hits.length+"件";
-  if(!hits.length){list.appendChild(el("div","empty",q?"「"+raw.trim()+"」に一致するイベントはありません。":"その形式のイベントはありません。"));return}
+  if(!hits.length){list.appendChild(el("div","empty","その形式のイベントはありません。"));return}
   hits.forEach(function(e){list.appendChild(item(e))});
 }
-$("q").addEventListener("input",renderSearch);
 (function(){var seen={};EV.forEach(function(ev){var f=catOf(ev);if(seen[f])return;seen[f]=1;var o=el("option","",f);o.value=f;$("fmt").appendChild(o)})})();
 $("fmt").addEventListener("change",function(){fmt=this.value;renderSearch();renderSel();renderMonth()});
 renderSearch();
